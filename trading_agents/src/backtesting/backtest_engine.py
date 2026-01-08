@@ -94,7 +94,7 @@ class BacktestEngine:
                 current_date += timedelta(days=rebalance_days)
                 continue
             
-            print(f"\n📅 Decision Point: {current_date.strftime('%Y-%m-%d')}")
+            print(f"\n Decision Point: {current_date.strftime('%Y-%m-%d')}")
             print(f"   Portfolio Value: ${self.current_capital:,.2f}")
             
             try:
@@ -345,4 +345,4 @@ class BacktestEngine:
         """Save backtest results to file"""
         with open(filename, 'w') as f:
             json.dump(results, f, indent=2)
-        print(f"\n💾 Results saved to {filename}")
+        print(f"\n Results saved to {filename}")

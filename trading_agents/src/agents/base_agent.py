@@ -86,7 +86,7 @@ class BaseAgent(ABC):
                 if "503" in error_msg or "overloaded" in error_msg or "429" in error_msg:
                     # Exponential backoff: 2s, 4s, 8s, 16s... plus jitter
                     wait_time = (2 ** attempt) + random.uniform(0, 1)
-                    print(f"⚠️ {self.name}: Model overloaded or rate limited. Retrying in {wait_time:.1f}s...")
+                    print(f" {self.name}: Model overloaded or rate limited. Retrying in {wait_time:.1f}s...")
                     time.sleep(wait_time)
                 else:
                     # If it's a different error, raise it immediately

@@ -260,7 +260,7 @@ Be intellectually honest. It's okay to change your mind if evidence warrants it.
     def compare_stocks(self, tickers: List[str]) -> Dict[str, Any]:
         """Compare multiple stocks and rank them"""
         print(f"\n{'='*70}")
-        print(f"📊 COMPARATIVE ANALYSIS: {', '.join(tickers)}")
+        print(f" COMPARATIVE ANALYSIS: {', '.join(tickers)}")
         print(f"{'='*70}\n")
         
         results = self.batch_analyze(tickers)
@@ -279,7 +279,7 @@ Be intellectually honest. It's okay to change your mind if evidence warrants it.
         
         ranked = sorted(results.items(), key=lambda x: score_decision(x[1]), reverse=True)
         
-        print("\n🏆 RANKING:")
+        print("\n RANKING:")
         for i, (ticker, decision) in enumerate(ranked, 1):
             print(f"{i}. {ticker}: {decision.final_recommendation} ({decision.confidence:.0%})")
             print(f"   Position: {decision.risk_assessment.metadata.get('position_size')}")

@@ -61,7 +61,7 @@ async def run_analysis_process(ticker, enable_debate):
             
         # 3. Handle Agent Toasts
         if update.get("status") == "agent_done":
-            st.toast(f"✅ {update['agent']} analysis complete!")
+            st.toast(f" {update['agent']} analysis complete!")
 
         # 4. Handle Final Result
         if update.get("status") == "complete":
