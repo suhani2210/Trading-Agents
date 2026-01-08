@@ -1,0 +1,33 @@
+google-generativeai
+openai
+ta
+watchdog
+# Core Dependencies
+langchain>=0.1.0
+langgraph>=0.0.20
+python-dotenv>=1.0.0
+
+# Data & Analysis
+yfinance>=0.2.36
+pandas>=2.0.0
+numpy>=1.24.0
+ta>=0.11.0  # Technical analysis library
+requests>=2.31.0
+
+# Web Framework
+streamlit>=1.31.0
+plotly>=5.18.0
+streamlit-option-menu>=0.3.12
+
+# Alternative: FastAPI + React (uncomment if needed)
+# fastapi>=0.109.0
+# uvicorn>=0.27.0
+# pydantic>=2.5.0
+
+# News & Sentiment
+newsapi-python>=0.2.7
+textblob>=0.17.1
+
+# Utilities
+python-dateutil>=2.8.2
+pytz>=2023.3

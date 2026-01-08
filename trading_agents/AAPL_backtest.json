@@ -1,0 +1,25 @@
+{
+  "initial_capital": 10000,
+  "final_capital": 10000.0,
+  "total_return_pct": 0.0,
+  "buy_hold_return_pct": 54.79821716284179,
+  "alpha": -54.79821716284179,
+  "num_trades": 1,
+  "winning_trades": 0,
+  "losing_trades": 0,
+  "win_rate": 0.0,
+  "avg_win_pct": 0,
+  "avg_loss_pct": 0,
+  "trades": [
+    {
+      "entry_date": "2023-04-01",
+      "exit_date": "2023-05-01",
+      "entry_price": 163.95030212402344,
+      "exit_price": 253.89700927734373,
+      "return_pct": 54.86217834797177,
+      "profit_loss": 0.0,
+      "recommendation": "BUY",
+      "confidence": 0.6087499999999999
+    }
+  ]
+}
