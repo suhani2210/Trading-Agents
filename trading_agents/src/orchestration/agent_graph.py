@@ -1,6 +1,7 @@
 from typing import Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime
+import asyncio
 
 from src.agents.technical_analyst import TechnicalAnalyst
 from src.agents.fundamental_analyst import FundamentalAnalyst
@@ -12,7 +13,6 @@ from src.data.market_data import MarketDataFetcher
 
 @dataclass
 class TradingDecision:
-    """Final trading decision output"""
     ticker: str
     final_recommendation: str
     confidence: float
@@ -24,11 +24,7 @@ class TradingDecision:
     timestamp: datetime = field(default_factory=datetime.now)
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary with proper formatting"""
-        # Format consensus score properly
         consensus_score = self.quantitative_consensus.get('consensus_score', 0)
-        formatted_consensus = round(float(consensus_score), 2)  
-        
         return {
             'ticker': self.ticker,
             'final_recommendation': self.final_recommendation,
@@ -36,7 +32,7 @@ class TradingDecision:
             'trader_analysis': self.trader_analysis,
             'quantitative_consensus': {
                 'recommendation': self.quantitative_consensus.get('recommendation'),
-                'consensus_score': formatted_consensus,  # FIXED: Properly formatted
+                'consensus_score': round(float(consensus_score), 2),
                 'agreement_level': self.quantitative_consensus.get('agreement_level'),
                 'individual_scores': self.quantitative_consensus.get('individual_scores', {})
             },
@@ -46,147 +42,62 @@ class TradingDecision:
                 'stop_loss': self.risk_assessment.metadata.get('stop_loss_price'),
                 'take_profit': self.risk_assessment.metadata.get('take_profit_price'),
                 'risk_reward_ratio': self.risk_assessment.metadata.get('risk_reward_ratio'),
-                'max_loss': self.risk_assessment.metadata.get('max_loss_dollars')
             },
             'agent_responses': [
                 {
-                    'agent': r.agent_name,
-                    'recommendation': r.recommendation,
-                    'confidence': r.confidence,
-                    'reasoning': r.reasoning  # Include FULL reasoning now
-                }
-                for r in self.agent_responses
+                    'agent': r.agent_name, 
+                    'recommendation': r.recommendation, 
+                    'confidence': r.confidence, 
+                    'reasoning': r.reasoning
+                } for r in self.agent_responses
             ],
             'timestamp': self.timestamp.isoformat(),
-            'market_data': {
-                'current_price': self.market_data['statistics']['current_price'],
-                'price_change_pct': self.market_data['statistics']['price_change_pct'],
-                '30d_return': self.market_data['statistics']['30d_return'],
-                'volatility': self.market_data['statistics']['volatility']
-            }
+            'market_data': self.market_data
         }
-    
-    def get_summary(self) -> str:
-        """Get human-readable summary"""
-        summary = f"""
-{'='*70}
-TRADING DECISION SUMMARY: {self.ticker}
-{'='*70}
-
- FINAL RECOMMENDATION: {self.final_recommendation}
- CONFIDENCE: {self.confidence:.0%}
-
- RISK MANAGEMENT:
-  • Position Size: {self.risk_assessment.metadata.get('position_size')}
-  • Stop Loss: ${self.risk_assessment.metadata.get('stop_loss_price', 0):.2f}
-  • Take Profit: ${self.risk_assessment.metadata.get('take_profit_price', 0):.2f}
-  • Risk/Reward: {self.risk_assessment.metadata.get('risk_reward_ratio')}
-  • Max Loss: {self.risk_assessment.metadata.get('max_loss_dollars')}
-
- AGENT CONSENSUS:
-  • Agreement Level: {self.quantitative_consensus.get('agreement_level', 0):.0%}
-  • Consensus Score: {self.quantitative_consensus.get('consensus_score', 0):.2f}
-
- MARKET CONDITIONS:
-  • Current Price: ${self.market_data['statistics']['current_price']:.2f}
-  • 30-Day Return: {self.market_data['statistics']['30d_return']:.2f}%
-  • Volatility: {self.market_data['statistics']['volatility']:.2f}%
-
- AGENT BREAKDOWN:
-"""
-        for agent_resp in self.agent_responses:
-            if agent_resp.agent_name != "Head Trader":  # Skip trader in breakdown
-                summary += f"\n  {agent_resp.agent_name}:"
-                summary += f"\n    • Recommendation: {agent_resp.recommendation} ({agent_resp.confidence:.0%})"
-                summary += f"\n    • Key Points:"
-                for reason in agent_resp.reasoning[:3]:
-                    summary += f"\n      - {reason[:80]}..."
-        
-        summary += f"\n\n{'='*70}\n"
-        return summary
 
 class TradingAgentOrchestrator:
-    """
-    Orchestrates multiple trading agents with proper workflow
-    """
-    
     def __init__(self):
-        # Initialize all agents
         self.technical_analyst = TechnicalAnalyst()
         self.fundamental_analyst = FundamentalAnalyst()
         self.sentiment_analyst = SentimentAnalyst()
         self.risk_manager = RiskManager()
         self.trader = TraderAgent()
-        
         self.data_fetcher = MarketDataFetcher()
+
+    async def _run_single_analyst(self, analyst, data) -> AgentResponse:
+        return await asyncio.to_thread(analyst.analyze, data)
+
+    async def analyze_stock_stream(self, ticker: str, enable_debate: bool = True):
+        # Step 1: Gathering Data
+        yield {"step": 1, "message": f"Gathering market data for {ticker}..."}
+        market_data = await asyncio.to_thread(self.data_fetcher.prepare_analysis_data, ticker)
+        yield {"step": 1, "message": f"✓ Data collected: {len(market_data['price_data'])} points"}
+
+        # Step 2: Parallel Analyst Runs
+        yield {"step": 2, "message": "Running specialist analyst analysis..."}
+        analysts = [self.technical_analyst, self.fundamental_analyst, self.sentiment_analyst]
+        tasks = [self._run_single_analyst(a, market_data) for a in analysts]
         
-    def analyze_stock(self, ticker: str, enable_debate: bool = True) -> TradingDecision:
-        """
-        Run complete multi-agent analysis workflow
-        
-        Args:
-            ticker: Stock symbol to analyze
-            enable_debate: Whether to enable agent debate round
-        
-        Returns:
-            TradingDecision with comprehensive analysis
-        """
-        print(f"\n{'='*70}")
-        print(f" MULTI-AGENT TRADING ANALYSIS: {ticker}")
-        print(f"{'='*70}\n")
-        
-        # Step 1: Gather market data
-        print(" Step 1: Gathering market data...")
-        market_data = self.data_fetcher.prepare_analysis_data(ticker)
-        print(f"✓ Data collected: {len(market_data['price_data'])} data points")
-        
-        # Step 2: Parallel agent analysis (trading agents only)
-        print("\n Step 2: Running specialist analyst analysis...")
-        agent_responses = self._run_parallel_analysis(market_data)
-        
-        # Step 3: Real agent debate
+        agent_responses = []
+        for task in asyncio.as_completed(tasks):
+            res = await task
+            agent_responses.append(res)
+            yield {"step": 2, "status": "agent_done", "agent": res.agent_name, "message": f"✓ {res.agent_name}: {res.recommendation}"}
+
+        # Step 3: Debate (if enabled)
         if enable_debate and len(agent_responses) >= 2:
-            print("\n Step 3: Agent debate and refinement...")
-            agent_responses = self._run_real_debate(agent_responses, market_data)
-        else:
-            print("\n Step 3: Skipping debate (not enough agents or disabled)")
+            yield {"step": 3, "message": "Initiating agent debate and refinement..."}
+            agent_responses = await asyncio.to_thread(self._run_real_debate, agent_responses, market_data)
         
-        # Step 4: Calculate quantitative consensus
-        print("\n Step 4: Calculating quantitative consensus...")
-        # This happens inside trader.make_decision now
-        
-        # Step 5: Head Trader makes final decision
-        print("\n Step 5: Head Trader synthesizing final decision...")
-        final_decision = self.trader.make_decision(ticker, agent_responses, market_data)
-        
-        print(f"   ✓ Decision: {final_decision.recommendation} ({final_decision.confidence:.0%})")
-        
-        # Step 6: Risk assessment (AFTER trading decision)
-        print("\n  Step 6: Risk Manager assessing position...")
-        risk_data = market_data.copy()
-        risk_data['trading_decision'] = final_decision.recommendation
-        risk_data['other_recommendations'] = [
-            {
-                'agent_name': r.agent_name,
-                'recommendation': r.recommendation,
-                'confidence': r.confidence
-            }
-            for r in agent_responses
-        ]
-        risk_assessment = self.risk_manager.analyze(risk_data)
-        
-        print(f"   ✓ Risk Level: {risk_assessment.metadata['risk_level']}")
-        print(f"   ✓ Position Size: {risk_assessment.metadata['position_size']}")
-        
-        # Only print stop loss if there is a position
-        if risk_assessment.metadata.get('stop_loss_price'):
-            print(f"   ✓ Stop Loss: ${risk_assessment.metadata['stop_loss_price']:.2f}")
-            print(f"   ✓ Take Profit: ${risk_assessment.metadata['take_profit_price']:.2f}")
-            print(f"   ✓ Risk/Reward: {risk_assessment.metadata['risk_reward_ratio']}")
-        else:
-            print(f"   ✓ No position - HOLD recommendation")
-        
-        # Compile results
+        # Step 4: Final Decision
+        yield {"step": 5, "message": "Head Trader synthesizing final decision..."}
+        final_decision = await asyncio.to_thread(self.trader.make_decision, ticker, agent_responses, market_data)
+
+        # Step 5: Risk Assessment
+        yield {"step": 6, "message": "Risk Manager assessing position..."}
+        risk_assessment = await asyncio.to_thread(self.risk_manager.analyze, {**market_data, 'trading_decision': final_decision.recommendation})
+
+        # Compile Final Decision
         decision = TradingDecision(
             ticker=ticker,
             final_recommendation=final_decision.recommendation,
@@ -197,43 +108,9 @@ class TradingAgentOrchestrator:
             quantitative_consensus=final_decision.metadata.get('quantitative_decision', {}),
             market_data=market_data
         )
-        
-        print(f"\n{'='*70}")
-        print(f" ANALYSIS COMPLETE")
-        print(f"{'='*70}\n")
-        
-        # Print detailed summary
-        print(decision.get_summary())
-        
-        return decision
-    
-    def _run_parallel_analysis(self, market_data: Dict[str, Any]) -> List[AgentResponse]:
-        """Run analyst agents in parallel with detailed output"""
-        responses = []
-        
-        analysts = [
-            ("Technical", self.technical_analyst),
-            ("Fundamental", self.fundamental_analyst),
-            ("Sentiment", self.sentiment_analyst)
-        ]
-        
-        for name, analyst in analysts:
-            print(f"\n    {name} Analyst working...")
-            try:
-                response = analyst.analyze(market_data)
-                responses.append(response)
-                
-                # Show detailed reasoning
-                print(f"  ✓ {name}: {response.recommendation} ({response.confidence:.0%})")
-                print(f"     Key reasoning:")
-                for i, reason in enumerate(response.reasoning[:3], 1):
-                    print(f"       {i}. {reason[:70]}...")
-                    
-            except Exception as e:
-                print(f"  ✗ {name} failed: {str(e)}")
-        
-        return responses
-    
+
+        yield {"step": 7, "status": "complete", "final_decision": decision}
+
     def _run_real_debate(
         self, 
         responses: List[AgentResponse], 
